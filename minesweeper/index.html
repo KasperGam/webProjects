@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>HTML5 Minesweeper</title>
+        <link rel="stylesheet" href="styles.css">
+        <script src='minesweeper.js'></script>
+    </head>
+    <body onload="onLayout();">
+        <div>
+            <div class="controlsWrapper">
+                <div>w:</div>
+                <input class="inputField" id="widthField" type="text"/>
+                <div>h:</div>
+                <input class="inputField" id="heightField" type="text"/>
+                <div>#bombs:</div>
+                <input class="inputField" id="bombField" type="text"/>
+                <div>bombs left:</div>
+                <div id="bombsLeft"></div>
+                <button class="newGameButton" type="button" id="newGameButton">New Game</button>
+            </div>
+            <canvas id="minesweeperCanvas" width="800" height="800"></canvas>
+        </div>
+    </body>
+</html>

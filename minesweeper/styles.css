@@ -1,0 +1,16 @@
+.controlsWrapper {
+    flex-direction: row;
+    display: flex;
+    align-items: center;
+    padding: 5px;
+}
+
+.inputField {
+    width: 50px;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+.newGameButton {
+    margin-left: 5px;
+}
