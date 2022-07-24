@@ -23,7 +23,6 @@ module.exports = {
         },
         two: 'two.js'
     },
-    mode: 'development',
     resolve: {
         extensions: ['.tsx', '.ts', '.js'],
     },

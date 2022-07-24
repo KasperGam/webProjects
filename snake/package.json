@@ -1,13 +1,14 @@
 {
   "name": "snake",
+  "displayName": "Snake",
   "version": "1.0.0",
-  "description": "Simple nake game using javascript",
+  "description": "Simple snake game using two.js",
   "main": "src/index.js",
   "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack && cp ./src/index.html ./dist/index.html",
-    "start": "webpack serve"
+    "build": "webpack --mode production",
+    "start": "webpack serve --mode development"
   },
   "author": "Kasper Gammeltoft",
   "license": "MIT",
