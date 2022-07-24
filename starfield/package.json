@@ -1,0 +1,13 @@
+{
+  "name": "starfield",
+  "displayName": "Starfield",
+  "version": "1.0.0",
+  "description": "Starfield simulation with javascript and canvas",
+  "main": "src/starfield.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rm -rf dist && cp -a ./src ./dist"
+  },
+  "author": "Kasper Gammeltoft",
+  "license": "MIT"
+}
