@@ -1,5 +1,5 @@
 {
-  "name": "snake",
+  "name": "snake-game",
   "displayName": "Snake",
   "version": "1.0.0",
   "description": "Simple snake game using two.js",

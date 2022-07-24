@@ -1,12 +1,13 @@
 {
     "name": "webgl-menger-sponge",
+    "displayName": "Menger Sponge 3D",
     "version": "1.0.0",
-    "description": "WebGL Menger Sponge Visualization",
+    "description": "WebGL Menger Sponge Visualization using three.js",
     "private": true,
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "build": "webpack",
-        "web": "webpack serve"
+        "build": "webpack --mode development",
+        "web": "webpack serve --mode production"
     },
     "devDependencies": {
         "webpack": "^5.0.0",
