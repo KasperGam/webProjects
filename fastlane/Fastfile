@@ -3,6 +3,7 @@ fastlane_require 'aws-sdk-dynamodb'
 
 before_all do |lane|
   skip_docs
+  setup_circle_ci
 end
 
 error do |lane, exception|

@@ -3,3 +3,6 @@
 **/.env
 **/.env.local
 **/dist
+
+## Fastlane
+fastlane/report.xml
