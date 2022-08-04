@@ -30,7 +30,7 @@ lane :buildAndUploadProject do |options|
   s3URL = uploadBuild(project: project)
   params = getProjectInfo(project: project)
   image = s3URL.dup()
-  image['/dist/index.html'] = "project.png"
+  image['/dist/index.html'] = "/project.png"
   puts "Finished building #{project}. Uploading to DB..."
   updateDB(project: project, name: params[:name], description: params[:description], image: image, url: s3URL)
   puts "Uploaded. S3 url: #{s3URL}"
