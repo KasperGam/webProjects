@@ -1,0 +1,136 @@
+fastlane_require 'json'
+fastlane_require 'aws-sdk-dynamodb'
+
+before_all do |lane|
+  skip_docs
+end
+
+error do |lane, exception|
+  puts "Fastlane error: #{exception.error_info.to_s}"
+end
+
+lane :buildChangedProjects do
+  projects = gitPaths()
+  projects.each do |project|
+    buildAndUploadProject(project: project)
+  end
+end
+
+lane :buildAllProjects do
+  projects = allProjectPaths()
+  projects.each do |project|
+    buildAndUploadProject(project: project)
+  end
+end
+
+lane :buildAndUploadProject do |options|
+  project = options[:project]
+  buildProj(project: project)
+  s3URL = uploadBuild(project: project)
+  params = getProjectInfo(project: project)
+  image = s3URL.dup()
+  image['/dist/index.html'] = "project.png"
+  puts "Finished building #{project}. Uploading to DB..."
+  updateDB(project: project, name: params[:name], description: params[:description], image: image, url: s3URL)
+  puts "Uploaded. S3 url: #{s3URL}"
+end
+
+lane :getProjectInfo do |options|
+  info = {description: "", name: options[:project]}
+  Dir.chdir("../#{options[:project]}") do
+    file = File.read('./package.json')
+    data_hash = JSON.parse(file)
+    if data_hash.include?('description')
+      info[:description] = data_hash['description'].dup()
+    end
+    if data_hash.include?('displayName')
+      info[:name] = data_hash['displayName'].dup()
+    end
+  end
+  info
+end
+
+lane :updateDB do |options|
+  client = Aws::DynamoDB::Client.new(
+    region: 'us-east-1',
+    credentials: Aws::Credentials.new(ENV['S3_ACCESS_KEY'], ENV['S3_SECRET_ACCESS_KEY']),
+  )
+  
+  resp = client.put_item({
+    item: {
+      "ProjectId" => "#{options[:project]}",
+      "description" => "#{options[:description]}",
+      "image" => "#{options[:image]}",
+      "name" => "#{options[:name]}",
+      "url" => "#{options[:url]}",
+    }, 
+    return_consumed_capacity: "NONE",
+    table_name: "WebsiteProjects", 
+  })
+
+end
+
+lane :uploadBuild do |options|
+  aws_s3(
+    access_key: ENV['S3_ACCESS_KEY'],
+    secret_access_key: ENV['S3_SECRET_ACCESS_KEY'],
+    bucket: ENV['S3_BUCKET'],
+    region: 'us-east-1',
+    folder: "#{options[:project]}/dist",
+    path: "projects/#{options[:project]}",
+    upload_metadata: false,
+  )
+
+  if File.exists? File.absolute_path(File.join('../', "#{options[:project]}/project.png"))
+    aws_s3(
+      access_key: ENV['S3_ACCESS_KEY'],
+      secret_access_key: ENV['S3_SECRET_ACCESS_KEY'],
+      bucket: ENV['S3_BUCKET'],
+      region: 'us-east-1',
+      files: ["#{options[:project]}/project.png"],
+      path: "projects/#{options[:project]}",
+      upload_metadata: false,
+    )
+  end
+  "https://#{ENV['S3_BUCKET']}.s3.amazonaws.com/projects/#{options[:project]}/dist/index.html"
+end  
+
+desc "Builds a single project passed in"
+lane :buildProj do |options|
+  Dir.chdir("../#{options[:project]}") do 
+    sh "npm run build"
+  end
+end
+
+desc "Get all project folders with changes"
+lane :gitPaths do
+  gitPaths = sh "git diff --name-only HEAD^"
+  paths = gitPaths.split(/\n/, -1)
+  allPaths = []
+
+  paths.each do |path|
+    if path.split("/", 2).length > 1
+      folder = path.split("/", 2).first
+      folderPath = File.absolute_path(File.join("../", folder))
+      if (File.directory? folderPath) and (File.exists? File.join(folderPath, "package.json"))
+        if !allPaths.include?(folder)
+          allPaths.push(folder)
+        end
+      end
+    end
+  end
+  allPaths
+end
+
+desc "Get all project folders. Makes sure they contain a package.json"
+lane :allProjectPaths do
+  projects = []
+  Dir.chdir("../") do
+    Dir.glob("*").select {|f| File.directory? f}.each do |f|
+      if File.exists? File.join(f, "package.json")
+        projects.push(f)
+      end
+    end
+  end
+  projects
+end
