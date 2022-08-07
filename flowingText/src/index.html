@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>Flowing Text</title>
+        <script defer="defer" src="index.js"></script>
+        <script defer="defer" src="two.js"></script>
+        <style>
+            .simArea {
+                margin-top: 20px;
+                border: 1px solid black;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="inputContainer">
+            <form id="textForm">
+                <input type="text" id="textInput"></input>
+                <button id="SetText">Set Text</button>
+                <button id="explodeButton">Explode</button>
+                <input type="submit" style="display: none" />
+            </form>
+        </div>
+        <div id="gameArea" class="simArea">
+        </div>
+    </body>
+</html>
