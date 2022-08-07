@@ -6,8 +6,8 @@
     "private": true,
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
-        "build": "webpack --mode development",
-        "web": "webpack serve --mode production"
+        "build": "webpack --mode production",
+        "web": "webpack serve --mode development"
     },
     "devDependencies": {
         "webpack": "^5.0.0",
