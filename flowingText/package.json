@@ -6,7 +6,7 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "webpack --mode production",
+    "build": "webpack --mode production && cp ./src/index.html ./dist/index.html",
     "start": "webpack serve --mode development"
   },
   "author": "Kasper Gammeltoft",

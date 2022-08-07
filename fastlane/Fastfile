@@ -99,6 +99,7 @@ end
 desc "Builds a single project passed in"
 lane :buildProj do |options|
   Dir.chdir("../#{options[:project]}") do 
+    sh "npm install"
     sh "npm run build"
   end
 end
