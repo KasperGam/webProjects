@@ -6,7 +6,8 @@ export interface SimState {
     mouse: SimPoint,
     showMouse: boolean,
     showText: boolean,
-    runningSimulation: boolean,
+    hadLastUpdate: boolean,
+    nodeColor: "red" | "green" | "blue" | "black",
 }
 
 export interface SimPoint {

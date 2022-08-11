@@ -9,7 +9,8 @@ const STATE: SimState = {
   mouse: {x: 0, y: 0},
   showMouse: true,
   showText: true,
-  runningSimulation: false,
+  hadLastUpdate: true,
+  nodeColor: `blue`,
 }
 
 const CONSTANTS = {
@@ -161,8 +162,15 @@ const drawNewText = (two: Two, text = "") => {
           circle.radius = dotSize;
         } else {
           const circle = new PhysicsCircle(nx + dx, ny + dy, dotSize, CONSTANTS.nodeMass);
-          circle.fill = `rgb(30, 30, 200)`;
-          circle.stroke = `rgb(10, 10, 110)`;
+          const redFill = STATE.nodeColor === `red` ? 200 : 30;
+          const greenFill = STATE.nodeColor === `green` ? 200 : 30;
+          const blueFill = STATE.nodeColor === `blue` ? 200 : 30;
+
+          const redStroke = STATE.nodeColor === `red` ? 110 : 10;
+          const greenStroke = STATE.nodeColor === `green` ? 110 : 10;
+          const blueStroke = STATE.nodeColor === `blue` ? 110 : 10;
+          circle.fill = `rgb(${redFill}, ${greenFill}, ${blueFill})`;
+          circle.stroke = `rgb(${redStroke}, ${greenStroke}, ${blueStroke})`;
           circle.anchor.set(nx + dx, ny + dy);
 
           mainGroup.add(circle);
@@ -195,7 +203,7 @@ const updateSimulation = (two: Two, frames: number) => {
   mouseCircle.translation.set(STATE.mouse.x, STATE.mouse.y);
   outerMouseCircle.translation.set(STATE.mouse.x, STATE.mouse.y);
 
-
+  STATE.hadLastUpdate = false;
 
   for(let i=0; i<mainGroup.children.length; i++) {
     let node = mainGroup.children[i] as PhysicsCircle;
@@ -231,9 +239,13 @@ const updateSimulation = (two: Two, frames: number) => {
       } else {
         node.velocity.set(newVX, newVY);
       }
+      if (!STATE.hadLastUpdate && (Math.abs(node.velocity.x) > 0.1 || Math.abs(node.velocity.y) > 0.1)) {
+        STATE.hadLastUpdate = true;
+      }
 
       node.useAcceleration = false;
     } else {
+      STATE.hadLastUpdate = true;
       node.velocity.x += xAcceleration;
       node.velocity.y += yAcceleration;
       // Dampen large velocities if we re-enter mouse range
@@ -245,9 +257,18 @@ const updateSimulation = (two: Two, frames: number) => {
 
     node.translation.addSelf(node.velocity)
   }
+  if (!STATE.hadLastUpdate && STATE.mouse.x < 0 && STATE.mouse.y < 0) {
+    two.pause();
+  }
 }
 
 const startSimulation = (two: Two) => {
+  // Bind a function to scale and rotate the group to the animation loop.
+  const update = (frames: number) => {
+    updateSimulation(two, frames);
+  }
+  two.bind('update', update);
+
   const canvas = two.renderer.domElement as HTMLCanvasElement;
   canvas.onmousemove = (event: MouseEvent) => {
     const x = event.x - canvas.offsetLeft;
@@ -255,6 +276,10 @@ const startSimulation = (two: Two) => {
 
     STATE.mouse.x = x;
     STATE.mouse.y = y;
+    
+    if (!two.playing) {
+      two.play();
+    }
   };
 
   const isMobile = window.navigator.maxTouchPoints > 0;
@@ -289,12 +314,6 @@ const startSimulation = (two: Two) => {
     STATE.mouse.y = -CONSTANTS.mouseRange * 2;
   }
 
-  const update = (frames: number) => {
-    updateSimulation(two, frames);
-  }
-
-  // Bind a function to scale and rotate the group to the animation loop.
-  two.bind('update', update);
   // Finally, start the animation loop
   two.play();
 }
@@ -349,6 +368,18 @@ window.onload = () => {
     }
   });
 
+  let mouseColor = urlParams.get('mousecolor') ?? 'red';
+  if (!['red', 'green', 'blue', 'black'].includes(mouseColor)) {
+    mouseColor = 'red';
+  }
+
+  let nodeColor = urlParams.get('nodecolor') ?? 'blue';
+  if (!['red', 'green', 'blue', 'black'].includes(nodeColor)) {
+    nodeColor = 'blue';
+  }
+  const stateNodeColor = nodeColor as "red" | "green" | "blue" | "black";
+  STATE.nodeColor = stateNodeColor;
+
   if (!hideUI) {
     Object.entries(CONSTANTS).forEach(([key, value]) => {
       const input = document.createElement('input') as HTMLInputElement;
@@ -370,13 +401,16 @@ window.onload = () => {
   const two = initCanvas(gameArea);
 
   const outerMouseCircle = two.makeCircle(-CONSTANTS.mouseRange * 2, -CONSTANTS.mouseRange * 2, CONSTANTS.mouseRange);
-  outerMouseCircle.fill = `rgb(255, 200, 200)`;
-  outerMouseCircle.stroke = `red`;
+  const mouseRed = mouseColor === `red` ? 255 : 200;
+  const mouseGreen = mouseColor === `green` ? 255 : 200;
+  const mouseBlue = mouseColor === `blue` ? 255 : 200;
+  outerMouseCircle.fill = `rgb(${mouseRed}, ${mouseGreen}, ${mouseBlue})`;
+  outerMouseCircle.stroke = mouseColor;
   outerMouseCircle.id = `outerMouseCircle`;
 
   const mouseCircle = two.makeCircle(-CONSTANTS.mouseRange * 2, -CONSTANTS.mouseRange * 2, 10);
-  mouseCircle.fill = `red`;
-  mouseCircle.stroke = `red`;
+  mouseCircle.fill = mouseColor;
+  mouseCircle.stroke = mouseColor;
   mouseCircle.id = `mouseCircle`;
 
   outerMouseCircle.visible = STATE.showMouse;
