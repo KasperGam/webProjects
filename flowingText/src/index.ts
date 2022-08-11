@@ -1,27 +1,71 @@
 import Two from 'two.js';
 import { Group } from 'two.js/src/group';
 import { Shape } from 'two.js/src/shape';
-import { Circle } from 'two.js/src/shapes/circle';
 import { Text } from 'two.js/src/text';
 import perlin from './perlin';
-import { SimState } from './types';
+import { PhysicsCircle, SimState } from './types';
 
 const STATE: SimState = {
   mouse: {x: 0, y: 0},
-  nodes: []
+  showMouse: true,
+  showText: true,
+  runningSimulation: false,
 }
 
 const CONSTANTS = {
-  mouseSpring: 40,
-  anchorSmoothMult: 0.1,
-  maxSwitchAcceleration: 0.4,
-  mouseRange: 120,
-  stageHeight: 450,
-  perlinNoiseMult: 0.2,
-  nodeDensity: 40,
-  nodeSize: 7,
-  nodeMass: 5,
-  mouseDampen: 20,
+  mouseForce: 40, // Spring force constant for mouse force on nodes. Is a repelling force
+  mouseRange: 120, // Radius of mouse range
+  mouseDampen: 20, // How much to dampen velocity on entering mouse area
+  anchorSmoothMult: 0.1, // How much anchor force there is to return nodes to anchor point if not in mouse range
+  maxSwitchAcceleration: 0.4, // Max acceleration when moving from mouse effects to anchor effects
+  perlinNoiseMult: 0.2, // How much the perlin noise will translate nodes from their origional anchor point.
+  nodeDensity: 40, // How dense to pack the nodes. This is an inverse- low numbers are more dense.
+  nodeSize: 7, // Radius of the nodes
+  nodeMass: 5, // Mass of the nodes
+  stageHeight: 450, // How tall the canvas is
+}
+
+const LABELS = {
+  mouseForce: {
+    hint: "Spring force constant for mouse force on nodes. Is a repelling force",
+    label: "Mouse force",
+  },
+  anchorSmoothMult: {
+    hint: "How much anchor force there is to return nodes to anchor point if not in mouse range",
+    label: "Anchor force",
+  },
+  maxSwitchAcceleration: {
+    hint: "Max acceleration when moving due anchor effects. Large number is less smooth- higher cap on acceleration",
+    label: "Anchor smoothing",
+  },
+  mouseRange: {
+    hint: "Radius of mouse range",
+    label: "Mouse range",
+  },
+  stageHeight: {
+    hint: "How tall the canvas is",
+    label: "Canvas height",
+  },
+  perlinNoiseMult: {
+    hint: "How much the perlin noise will translate nodes from their origional anchor point",
+    label: "Anchor position noise",
+  },
+  nodeDensity: {
+    hint: "How dense to pack the nodes. This is an inverse- low numbers are more dense. This is pixels per node",
+    label: "Node density",
+  },
+  nodeSize: {
+    hint: "Radius of the nodes",
+    label: "Node size",
+  },
+  nodeMass: {
+    hint: "Mass of the nodes",
+    label: "Node mass"
+  },
+  mouseDampen: {
+    hint: "How much to dampen velocity on entering mouse area",
+    label: "Mouse dampen",
+  }
 }
 
 const initCanvas = (parent: HTMLElement) => {
@@ -53,13 +97,35 @@ const isInsideText = (pixels: ImageData) => {
   return false;
 }
 
+const resizeMainText = (two: Two) => {
+  const text = two.scene.getById("mainDrawText");
+  const size = text.getBoundingClientRect(true);
+  let newSize = 1;
+  if (size.width > two.width * .8 || size.width < two.width * .6) {
+    newSize = (two.width * .8) / size.width;
+  }
+
+  if (size.height > two.height - 20) {
+    const newHSize = (two.height - 20) / size.height;
+    if (newHSize < newSize) {
+      newSize = newHSize;
+    }
+  }
+  text.size = Math.min(text.size * newSize, 300);
+  text.translation.set(two.width / 2, two.height / 2 - 20);
+}
+
 const drawNewText = (two: Two, text = "") => {
   const textNode = two.scene.getById("mainDrawText") as Text;
   const mainGroup = two.scene.getById("mainGroup") as Group;
   
   textNode.value = text;
   mainGroup.visible = false;
+  textNode.visible = true;
 
+  // Make sure we update text size for new text
+  two.update();
+  resizeMainText(two);
   two.update();
   two.render();
 
@@ -86,60 +152,55 @@ const drawNewText = (two: Two, text = "") => {
 
         const dotSize = CONSTANTS.nodeSize;
 
-        if (STATE.nodes.length > index) {
-          let node = STATE.nodes[index];
-          node.anchor = {x: nx + dx, y: ny + dy};
-          node.velocity = {x: 0, y: 0};
-          node.acceleration = {x: 0, y: 0};
-          node.useAcceleration = false;
+        if (mainGroup.children.length > index) {
+          const circle = mainGroup.children[index] as PhysicsCircle;
+          circle.anchor.set(nx + dx, ny + dy);
+          circle.velocity.set(0, 0);
+          circle.useAcceleration = false;
+          circle.mass = CONSTANTS.nodeMass;
+          circle.radius = dotSize;
         } else {
-          const circle = new Circle(nx + dx, ny + dy, dotSize);
+          const circle = new PhysicsCircle(nx + dx, ny + dy, dotSize, CONSTANTS.nodeMass);
           circle.fill = `rgb(30, 30, 200)`;
           circle.stroke = `rgb(10, 10, 110)`;
+          circle.anchor.set(nx + dx, ny + dy);
+
           mainGroup.add(circle);
-          STATE.nodes.push({
-            anchor: {x: circle.translation.x, y: circle.translation.y},
-            position: {x: circle.translation.x, y: circle.translation.y},
-            velocity: {x: 0, y: 0},
-            acceleration: {x: 0, y: 0},
-            mass: CONSTANTS.nodeMass,
-            useAcceleration: false,
-          })
         }
         index++;
       }
     }
   }
 
-  while (STATE.nodes.length > index + 1) {
-    STATE.nodes.pop();
-  }
-
-  while (mainGroup.children.length > STATE.nodes.length) {
-    mainGroup.children[mainGroup.children.length - 1].remove();
+  while (mainGroup.children.length > index + 1) {
+    const child = mainGroup.children[mainGroup.children.length - 1];
+    child.remove();
+    two.release(child);
   }
   mainGroup.visible = true;
+  textNode.visible = STATE.showText;
 
   two.update();
 }
 
 const updateSimulation = (two: Two, frames: number) => {
-  const mouseSpring = CONSTANTS.mouseSpring;
   const anchorSmoothMult = CONSTANTS.anchorSmoothMult;
 
   const mouseRange = CONSTANTS.mouseRange;
 
-  const mainGroup = two.scene.getById("mainGroup");
+  const mainGroup = two.scene.getById("mainGroup") as Group;
   const mouseCircle = two.scene.getById("mouseCircle") as Shape;
   const outerMouseCircle = two.scene.getById("outerMouseCircle") as Shape;
 
   mouseCircle.translation.set(STATE.mouse.x, STATE.mouse.y);
   outerMouseCircle.translation.set(STATE.mouse.x, STATE.mouse.y);
 
-  for(let i=0; i<STATE.nodes.length; i++) {
-    let node = STATE.nodes[i];
-    const x = node.position.x;
-    const y = node.position.y;
+
+
+  for(let i=0; i<mainGroup.children.length; i++) {
+    let node = mainGroup.children[i] as PhysicsCircle;
+    const x = node.translation.x;
+    const y = node.translation.y;
 
     let dx = x - node.anchor.x;
     let dy = y - node.anchor.y;
@@ -148,7 +209,7 @@ const updateSimulation = (two: Two, frames: number) => {
     const mdy = y - STATE.mouse.y;
     const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
     
-    const mouseForce = (mDist !== 0 && mDist < mouseRange) ? mouseSpring / mDist : 0;
+    const mouseForce = (mDist !== 0 && mDist < mouseRange) ? CONSTANTS.mouseForce / mDist : 0;
     const mouseAcceleration = mouseForce / node.mass;
     const xMouseAcceleration = mDist ? (mdx / mDist) * mouseAcceleration : 0;
     const yMouseAcceleration = mDist ? (mdy / mDist) * mouseAcceleration : 0;
@@ -164,31 +225,25 @@ const updateSimulation = (two: Two, frames: number) => {
       const dvx = newVX - node.velocity.x;
       const dvy = newVY - node.velocity.y;
       const newAcceleration = Math.sqrt(dvx * dvx + dvy * dvy);
-      const mult = newAcceleration > maxAcceleration ? maxAcceleration / newAcceleration : 1;
-      node.acceleration.x = 0;
-      node.acceleration.y = 0;
-      node.velocity.x = newAcceleration > maxAcceleration ? node.velocity.x + dvx * mult : newVX;
-      node.velocity.y = newAcceleration > maxAcceleration ? node.velocity.y + dvy * mult : newVY;
+      if (newAcceleration > maxAcceleration) {
+        const mult = maxAcceleration / newAcceleration;
+        node.velocity.addSelf(dvx * mult, dvy * mult);
+      } else {
+        node.velocity.set(newVX, newVY);
+      }
 
       node.useAcceleration = false;
     } else {
-      node.acceleration.x = xAcceleration;
-      node.acceleration.y = yAcceleration;
-      node.velocity.x += node.acceleration.x;
-      node.velocity.y += node.acceleration.y;
+      node.velocity.x += xAcceleration;
+      node.velocity.y += yAcceleration;
       // Dampen large velocities if we re-enter mouse range
       if (!node.useAcceleration) {
-        node.velocity.x = node.velocity.x / CONSTANTS.mouseDampen;
-        node.velocity.y = node.velocity.y / CONSTANTS.mouseDampen;
+        node.velocity.multiply(1 / CONSTANTS.mouseDampen);
       }
       node.useAcceleration = true;
     }
 
-    node.position.x += node.velocity.x;
-    node.position.y += node.velocity.y;
-
-    const nodeChild = mainGroup.children[i] as Shape;
-    nodeChild.translation.set(node.position.x, node.position.y);
+    node.translation.addSelf(node.velocity)
   }
 }
 
@@ -201,6 +256,28 @@ const startSimulation = (two: Two) => {
     STATE.mouse.x = x;
     STATE.mouse.y = y;
   };
+
+  const isMobile = window.navigator.maxTouchPoints > 0;
+  if (isMobile) {
+    canvas.ontouchmove = ((event: TouchEvent) => {
+      const x = event.targetTouches.item(0)?.clientX;
+      const y = event.targetTouches.item(0)?.clientX;
+      if (!isNaN(x) &&  !isNaN(y)) {
+        STATE.mouse.x = x - canvas.offsetLeft;
+        STATE.mouse.y = y - canvas.offsetTop;
+      }
+    });
+  }
+
+  window.onresize = (() => {
+    const newWidth = window.innerWidth;
+    const newHeight = two.height;
+    two.renderer.setSize(newWidth, newHeight);
+    two.width = newWidth;
+    two.height = newHeight;
+    const textNode = two.scene.getById("mainDrawText") as Text;
+    drawNewText(two, textNode.value);
+  });
 
   canvas.onmouseleave = () => {
     STATE.mouse.x = -CONSTANTS.mouseRange * 2;
@@ -218,15 +295,12 @@ const startSimulation = (two: Two) => {
 }
 
 const explodeNodes = (two: Two) => {
-  for(let i=0; i<STATE.nodes.length; i++) {
-    let node = STATE.nodes[i];
+  const mainGroup = two.scene.getById("mainGroup") as Group;
+  for(let i=0; i<mainGroup.children.length; i++) {
+    let node = mainGroup.children[i] as PhysicsCircle;
     node.useAcceleration = false;
-    node.acceleration.x = 0;
-    node.acceleration.y = 0;
-    node.velocity.x = 0;
-    node.velocity.y = 0;
-    node.position.x = Math.random() * two.width;
-    node.position.y = Math.random() * two.height;
+    node.velocity.set(0, 0);
+    node.translation.set(Math.random() * two.width, Math.random() * two.height);
   }
 }
 
@@ -236,12 +310,52 @@ window.onload = () => {
 
   let SetTextButton = document.getElementById("SetText") as HTMLButtonElement;
   let explodeButton = document.getElementById("explodeButton") as HTMLButtonElement;
+  let updateParamsButton = document.getElementById("updateParamsButton") as HTMLButtonElement;
 
+  let hideTextInput = document.getElementById("hideTextInput") as HTMLInputElement;
+  let hideMouseInput = document.getElementById("hideMouseInput") as HTMLInputElement;
+
+  const otherControls = document.getElementById("otherControls") as HTMLDivElement;
+
+  let gameArea = document.getElementById("gameArea");
+
+  // Get url params to control UI and values for simulation
   const urlParams = new URLSearchParams(window.location.search);
   const initialText = urlParams.get('text') ?? 'Hello';
   input.value = initialText;
 
-  let gameArea = document.getElementById("gameArea");
+  const initialMouseVisible = !(urlParams.get('showmouse') === 'false');
+  const initialTextVisible = !(urlParams.get('showtext') === 'false');
+  STATE.showMouse = initialMouseVisible;
+  STATE.showText = initialTextVisible;
+
+  const hideUI = urlParams.get('gui') === 'hide';
+  if (hideUI) {
+    textForm.style.visibility = 'hidden';
+    document.getElementById("updateButtonArea").style.visibility = 'hidden';
+    gameArea.style.borderColor = 'transparent';
+  }
+
+  const otherControlsInputs: HTMLInputElement[] = [];
+
+  if (!hideUI) {
+    Object.entries(CONSTANTS).forEach(([key, value]) => {
+      const input = document.createElement('input') as HTMLInputElement;
+      input.value = value.toString();
+      input.id = key;
+      const cKey = key as keyof typeof LABELS;
+      const label = document.createElement("div");
+      label.innerHTML = `${LABELS[cKey].label}: `;
+      input.title = LABELS[cKey].hint;
+      input.alt = LABELS[cKey].hint;
+      label.style.padding = `5px`;
+      otherControls.appendChild(label);
+      label.appendChild(input);
+      input.style.maxWidth = `4rem`;
+      otherControlsInputs.push(input);
+    });  
+  }
+
   const two = initCanvas(gameArea);
 
   const outerMouseCircle = two.makeCircle(-CONSTANTS.mouseRange * 2, -CONSTANTS.mouseRange * 2, CONSTANTS.mouseRange);
@@ -254,7 +368,10 @@ window.onload = () => {
   mouseCircle.stroke = `red`;
   mouseCircle.id = `mouseCircle`;
 
-  const text = two.makeText("hi", two.width / 2, two.height / 2 - 50, {
+  outerMouseCircle.visible = STATE.showMouse;
+  mouseCircle.visible = STATE.showMouse;
+
+  const text = two.makeText(initialText, two.width / 2, two.height / 2 - 20, {
     stroke: `black`,
     linewidth: 1,
     size: 300,
@@ -271,7 +388,6 @@ window.onload = () => {
 
   textForm.onsubmit = (event) => {
     event.preventDefault();
-    console.log(event.target);
     const text = input.value;
     drawNewText(two, text);
   };
@@ -285,6 +401,37 @@ window.onload = () => {
   explodeButton.onclick = (event) => {
     event.preventDefault();
     explodeNodes(two);
+  }
+
+  hideMouseInput.onchange = (event) => {
+    event.preventDefault();
+    const newValue = hideMouseInput.checked;
+    STATE.showMouse = !newValue;
+    mouseCircle.visible = STATE.showMouse;
+    outerMouseCircle.visible = STATE.showMouse;
+  }
+
+  hideTextInput.onchange = (event) => {
+    event.preventDefault();
+    const newValue = hideTextInput.checked;
+    STATE.showText = !newValue;
+    text.visible = STATE.showText;
+  }
+
+  updateParamsButton.onclick = () => {
+    // Update values
+    for(let input of otherControlsInputs) {
+      const key = input.id;
+      const cKey = key as keyof typeof CONSTANTS;
+      const newValue = Number.parseFloat(input.value);
+      if (!isNaN(newValue)) {
+        CONSTANTS[cKey] = newValue;
+      }
+    }
+
+    outerMouseCircle.radius = CONSTANTS.mouseRange;
+    const text = input.value;
+    drawNewText(two, text);
   }
 
   startSimulation(two);

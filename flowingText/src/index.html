@@ -10,6 +10,21 @@
                 margin-top: 20px;
                 border: 1px solid black;
             }
+            .otherControls {
+                display: flex;
+                flex-direction: row;
+                flex-wrap: wrap;
+                max-width: 550px;
+            }
+            .updateButtonDiv {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                margin-top: 5px;
+                margin-bottom: 5px;
+            }
         </style>
     </head>
     <body>
@@ -18,10 +33,19 @@
                 <input type="text" id="textInput"></input>
                 <button id="SetText">Set Text</button>
                 <button id="explodeButton">Explode</button>
+                <input type="checkbox" id="hideTextInput">Hide text</input>
+                <input type="checkbox" id="hideMouseInput">Hide mouse</input>
                 <input type="submit" style="display: none" />
             </form>
         </div>
         <div id="gameArea" class="simArea">
+        </div>
+        <div class="updateButtonDiv" id="updateButtonArea">
+            <button id="updateParamsButton">Update</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center">
+            <div id="otherControls" class="otherControls">
+            </div>
         </div>
     </body>
 </html>
