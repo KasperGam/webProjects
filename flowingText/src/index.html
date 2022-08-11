@@ -47,5 +47,14 @@
             <div id="otherControls" class="otherControls">
             </div>
         </div>
+        <script type="text/javascript">
+            const urlParams = new URLSearchParams(window.location.search);
+            const hideUI = urlParams.get('gui') === 'hide';
+            if (hideUI) {
+                document.getElementById("textForm").style.visibility = 'hidden';
+                document.getElementById("updateButtonArea").style.visibility = 'hidden';
+                document.getElementById("gameArea").style.borderColor = 'transparent';
+            }
+        </script>
     </body>
 </html>

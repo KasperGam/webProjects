@@ -260,13 +260,18 @@ const startSimulation = (two: Two) => {
   const isMobile = window.navigator.maxTouchPoints > 0;
   if (isMobile) {
     canvas.ontouchmove = ((event: TouchEvent) => {
+      event.preventDefault();
       const x = event.targetTouches.item(0)?.clientX;
-      const y = event.targetTouches.item(0)?.clientX;
+      const y = event.targetTouches.item(0)?.clientY;
       if (!isNaN(x) &&  !isNaN(y)) {
-        STATE.mouse.x = x - canvas.offsetLeft;
-        STATE.mouse.y = y - canvas.offsetTop;
+        STATE.mouse.x = x;
+        STATE.mouse.y = y;
       }
     });
+    canvas.ontouchend = () => {
+      STATE.mouse.x = -CONSTANTS.mouseRange * 2;
+      STATE.mouse.y = -CONSTANTS.mouseRange * 2;
+    }
   }
 
   window.onresize = (() => {
@@ -330,13 +335,19 @@ window.onload = () => {
   STATE.showText = initialTextVisible;
 
   const hideUI = urlParams.get('gui') === 'hide';
-  if (hideUI) {
-    textForm.style.visibility = 'hidden';
-    document.getElementById("updateButtonArea").style.visibility = 'hidden';
-    gameArea.style.borderColor = 'transparent';
-  }
 
   const otherControlsInputs: HTMLInputElement[] = [];
+
+  Object.entries(CONSTANTS).forEach(([key, value]) => {
+    const initial = urlParams.get(key);
+    if (initial) {
+      const initialValue = Number.parseFloat(initial);
+      if (!isNaN(initialValue)) {
+        const cKey = key as keyof typeof CONSTANTS;
+        CONSTANTS[cKey] = initialValue;
+      }
+    }
+  });
 
   if (!hideUI) {
     Object.entries(CONSTANTS).forEach(([key, value]) => {
