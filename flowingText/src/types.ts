@@ -8,6 +8,7 @@ export interface SimState {
     showText: boolean,
     hadLastUpdate: boolean,
     nodeColor: "red" | "green" | "blue" | "black",
+    autoscale: boolean,
 }
 
 export interface SimPoint {

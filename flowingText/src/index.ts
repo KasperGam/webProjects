@@ -11,6 +11,7 @@ const STATE: SimState = {
   showText: true,
   hadLastUpdate: true,
   nodeColor: `blue`,
+  autoscale: true,
 }
 
 const CONSTANTS = {
@@ -23,7 +24,10 @@ const CONSTANTS = {
   nodeDensity: 40, // How dense to pack the nodes. This is an inverse- low numbers are more dense.
   nodeSize: 7, // Radius of the nodes
   nodeMass: 5, // Mass of the nodes
+  targetTextSize: 300, // Target text size
   stageHeight: 450, // How tall the canvas is
+  densityScale: 1, // Scale node density based on text size
+  sizeScale: 1, // Scale node size based on text size
 }
 
 const LABELS = {
@@ -66,6 +70,18 @@ const LABELS = {
   mouseDampen: {
     hint: "How much to dampen velocity on entering mouse area",
     label: "Mouse dampen",
+  },
+  targetTextSize: {
+    hint: "Max and initial text size. Also used for autoscale if enabled",
+    label: "Target text size",
+  },
+  densityScale: {
+    hint: "Scale to get node density based on rendered text size",
+    label: "Density autoscale",
+  },
+  sizeScale: {
+    hint: "Scale to get node size based on rendered text size",
+    label: "Size autoscale",
   }
 }
 
@@ -112,7 +128,8 @@ const resizeMainText = (two: Two) => {
       newSize = newHSize;
     }
   }
-  text.size = Math.min(text.size * newSize, 300);
+  text.size = Math.min(text.size * newSize, CONSTANTS.targetTextSize);
+  console.log(text.size);
   text.translation.set(two.width / 2, two.height / 2 - 20);
 }
 
@@ -134,7 +151,17 @@ const drawNewText = (two: Two, text = "") => {
   const context = two.renderer.ctx as CanvasRenderingContext2D;
   const ratio = two.width / canvas.width;
 
-  const resolution = Math.floor(CONSTANTS.nodeDensity * ratio);
+  if (STATE.autoscale) {
+    if (CONSTANTS.densityScale === 1 || CONSTANTS.sizeScale === 1) {
+      CONSTANTS.densityScale = CONSTANTS.nodeDensity / CONSTANTS.targetTextSize;
+      CONSTANTS.sizeScale = CONSTANTS.nodeSize / CONSTANTS.targetTextSize;
+      console.log(CONSTANTS.densityScale, CONSTANTS.sizeScale);
+    }
+  }
+
+  const textSize = textNode.size;
+
+  const resolution = Math.floor(STATE.autoscale ? CONSTANTS.densityScale * textSize * ratio : CONSTANTS.nodeDensity * ratio); 
   const noiseMult = CONSTANTS.perlinNoiseMult;
 
   let index = 0;
@@ -151,7 +178,7 @@ const drawNewText = (two: Two, text = "") => {
         const dx = Math.cos(skewAngle) * resolution * noiseMult + resolution / 2;
         const dy = Math.sin(skewAngle) * resolution * noiseMult + resolution / 2;
 
-        const dotSize = CONSTANTS.nodeSize;
+        const dotSize = STATE.autoscale ? CONSTANTS.sizeScale * textNode.size : CONSTANTS.nodeSize;
 
         if (mainGroup.children.length > index) {
           const circle = mainGroup.children[index] as PhysicsCircle;
@@ -307,6 +334,9 @@ const startSimulation = (two: Two) => {
     two.height = newHeight;
     const textNode = two.scene.getById("mainDrawText") as Text;
     drawNewText(two, textNode.value);
+    if (!two.playing) {
+      two.play();
+    }
   });
 
   canvas.onmouseleave = () => {
@@ -338,6 +368,7 @@ window.onload = () => {
 
   let hideTextInput = document.getElementById("hideTextInput") as HTMLInputElement;
   let hideMouseInput = document.getElementById("hideMouseInput") as HTMLInputElement;
+  let autoscaleInput = document.getElementById("autoscaleInput") as HTMLInputElement;
 
   const otherControls = document.getElementById("otherControls") as HTMLDivElement;
 
@@ -350,8 +381,14 @@ window.onload = () => {
 
   const initialMouseVisible = !(urlParams.get('showmouse') === 'false');
   const initialTextVisible = !(urlParams.get('showtext') === 'false');
+  const autoscale = (urlParams.get('autoscale') ?? 'true') === 'true';
   STATE.showMouse = initialMouseVisible;
   STATE.showText = initialTextVisible;
+  STATE.autoscale = autoscale;
+
+  hideTextInput.checked = !initialTextVisible;
+  hideMouseInput.checked = !initialMouseVisible;
+  autoscaleInput.checked = autoscale;
 
   const hideUI = urlParams.get('gui') === 'hide';
 
@@ -461,6 +498,14 @@ window.onload = () => {
     const newValue = hideTextInput.checked;
     STATE.showText = !newValue;
     text.visible = STATE.showText;
+  }
+
+  autoscaleInput.onchange = (event) => {
+    event.preventDefault();
+    const newValue = autoscaleInput.checked;
+    STATE.autoscale = newValue;
+    const text = input.value;
+    drawNewText(two, text);
   }
 
   updateParamsButton.onclick = () => {

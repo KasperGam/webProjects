@@ -35,6 +35,7 @@
                 <button id="explodeButton">Explode</button>
                 <input type="checkbox" id="hideTextInput">Hide text</input>
                 <input type="checkbox" id="hideMouseInput">Hide mouse</input>
+                <input type="checkbox" id="autoscaleInput">Autoscale</input>
                 <input type="submit" style="display: none" />
             </form>
         </div>
@@ -52,8 +53,12 @@
             const hideUI = urlParams.get('gui') === 'hide';
             if (hideUI) {
                 document.getElementById("textForm").style.visibility = 'hidden';
+                document.getElementById("inputContainer").style.height = '0px';
                 document.getElementById("updateButtonArea").style.visibility = 'hidden';
+                document.getElementById("updateButtonArea").style.height = '0px';
                 document.getElementById("gameArea").style.borderColor = 'transparent';
+                document.getElementById("gameArea").style.marginTop = `0px`;
+                document.body.style.margin = `0px`;
             }
         </script>
     </body>
