@@ -8,7 +8,6 @@ import { Vector } from 'two.js/src/vector';
 import { Path } from 'two.js/src/path';
 import { Shape } from 'two.js/src/shape';
 
-//const app = document.querySelector<HTMLDivElement>('#app')!;
 const triangleArea = document.getElementById('triangleArea') as HTMLDivElement;
 const triIncrease = document.getElementById('triIncrease') as HTMLButtonElement;
 const triDecrease = document.getElementById('triDecrease') as HTMLButtonElement;
