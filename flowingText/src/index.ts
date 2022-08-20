@@ -128,8 +128,7 @@ const resizeMainText = (two: Two) => {
       newSize = newHSize;
     }
   }
-  text.size = Math.min(text.size * newSize, CONSTANTS.targetTextSize);
-  console.log(text.size);
+  text.size = Math.max(Math.min(text.size * newSize, CONSTANTS.targetTextSize), 15);
   text.translation.set(two.width / 2, two.height / 2 - 20);
 }
 
@@ -155,7 +154,6 @@ const drawNewText = (two: Two, text = "") => {
     if (CONSTANTS.densityScale === 1 || CONSTANTS.sizeScale === 1) {
       CONSTANTS.densityScale = CONSTANTS.nodeDensity / CONSTANTS.targetTextSize;
       CONSTANTS.sizeScale = CONSTANTS.nodeSize / CONSTANTS.targetTextSize;
-      console.log(CONSTANTS.densityScale, CONSTANTS.sizeScale);
     }
   }
 
