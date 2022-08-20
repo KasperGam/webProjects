@@ -1,0 +1,20 @@
+{
+  "name": "sierpinski",
+  "private": true,
+  "version": "1.0.0",
+  "displayName": "Sierpiński fractals",
+  "description": "Sierpinski fractals using two.js. Explore sierpinski triangle, carpet, and other shapes",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^4.6.4",
+    "vite": "^3.0.7"
+  },
+  "dependencies": {
+    "two.js": "^0.8.10"
+  }
+}
