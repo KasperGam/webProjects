@@ -98,6 +98,7 @@ window.onload = () => {
     type: Two.Types.svg,
   }
 
+  // Create two canvas for triangle
   const triTwo = new Two(options).appendTo(triangleArea);
   const mainTriGroup = triTwo.makeGroup();
   mainTriGroup.id = "mainTriangleGroup";
