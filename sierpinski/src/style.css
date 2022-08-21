@@ -55,6 +55,10 @@ button:hover {
   margin-bottom: 1rem;
 }
 
+#squareButtons {
+  margin-bottom: 1rem;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

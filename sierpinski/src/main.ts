@@ -7,12 +7,21 @@ import { Anchor } from 'two.js/src/anchor';
 import { Vector } from 'two.js/src/vector';
 import { Path } from 'two.js/src/path';
 import { Shape } from 'two.js/src/shape';
+import { Rectangle } from 'two.js/src/shapes/rectangle';
 
 const triangleArea = document.getElementById('triangleArea') as HTMLDivElement;
 const triIncrease = document.getElementById('triIncrease') as HTMLButtonElement;
 const triDecrease = document.getElementById('triDecrease') as HTMLButtonElement;
 
+const squareArea = document.getElementById('squareArea') as HTMLDivElement;
+const squareDecrease = document.getElementById('squareDecrease') as HTMLButtonElement;
+const squareIncrease = document.getElementById('squareIncrease') as HTMLButtonElement;
+
 let triLevel = 0;
+let carpetLevel = 0;
+
+let triLevelRendered = 0;
+let carpetLevelRendered = 0;
 
 const drawSierpinskiTriangle = (two: Two, levels: number) => {
   const mainGroup = (two.scene as Group).getById("mainTriangleGroup") as Group;
@@ -32,17 +41,33 @@ const drawSierpinskiTriangle = (two: Two, levels: number) => {
   const v2 = vertices[1];
   const v3 = vertices[2];
 
-  const newLevelsGroup = new Group();
+  if (levels > triLevelRendered) {
+    const newLevelsGroup = new Group();
+    drawSierpinskiTriangleLevel(mainGroup, newLevelsGroup, 1, levels, v1, v2, v3);
+    triLevelRendered = levels;
+    
+    while(newLevelsGroup.children.length > 0) {
+      const child = (newLevelsGroup.children as Shape[]).pop();
+      child?.remove();
+      if (child) {
+        mainGroup.add(child);
+      }
+    }
+  } else {
+    for(let child of mainGroup.children) {
+      child.visible = false;
+    }
 
-  drawSierpinskiTriangleLevel(mainGroup, newLevelsGroup, 1, levels, v1, v2, v3);
-  
-  while(newLevelsGroup.children.length > 0) {
-    const child = (newLevelsGroup.children as Shape[]).pop();
-    child?.remove();
-    if (child) {
-      mainGroup.add(child);
+    base.visible = true;
+
+    for (let i=0; i<=levels; i++) {
+      const levelGroup = mainGroup.getById(`level_${i}`) as Group | null;
+      if (levelGroup) {
+        levelGroup.visible = true;
+      }
     }
   }
+
   two.update();
 }
 
@@ -90,6 +115,94 @@ const drawSierpinskiTriangleLevel = (main: Group, shared: Group, level: number, 
   return sharedGroup;
 }
 
+const drawSierpinskiCarpet = (two: Two, levels: number) => {
+  const mainGroup = (two.scene as Group).getById("mainSquareGroup") as Group;
+  const size = Math.min(two.height - 50, two.width / 3);
+  let base = mainGroup.getById("baseCarpet") as Rectangle | null;
+  if (!base) {
+    const newRect = new Rectangle(0, -25, size, size);
+    newRect.fill = "#F00";
+    newRect.stroke = "#F00";
+    newRect.id = "baseCarpet";
+
+    mainGroup.add(newRect);
+    base = newRect;
+  }
+
+  if (levels > carpetLevelRendered) {
+    const newLevelsGroup = new Group();
+
+    drawSierpinskiCarpetLevel(mainGroup, newLevelsGroup, 1, levels, new Vector(base.translation.x, base.translation.y), base.width);
+
+    carpetLevelRendered = levels;
+    
+    while(newLevelsGroup.children.length > 0) {
+      const child = (newLevelsGroup.children as Shape[]).pop();
+      child?.remove();
+      if (child) {
+        mainGroup.add(child);
+      }
+    }
+  } else {
+    for(let child of mainGroup.children) {
+      child.visible = false;
+    }
+
+    base.visible = true;
+
+    for (let i=0; i<=levels; i++) {
+      const levelGroup = mainGroup.getById(`level_${i}`) as Group | null;
+      if (levelGroup) {
+        levelGroup.visible = true;
+      }
+    }
+  }
+
+  two.update();
+}
+
+const drawSierpinskiCarpetLevel = (main: Group, shared: Group, level: number, maxLevel: number, point: Vector, size: number) => {
+  if (maxLevel - level < 0) {
+    const thisLevel = main.getById(`level_${level}`) as Group | null;
+    if (thisLevel) {
+      thisLevel.visible = false;
+    }
+    return;
+  }
+
+  const levelGroup = main.getById(`level_${level}`);
+  let needsDraw = true;
+  if (levelGroup as Group) {
+    (levelGroup as Group).visible = true;
+    needsDraw = false;
+  }
+
+  let sharedGroup = shared.getById(`level_${level}`) as Group | null;
+  if (!sharedGroup) {
+    sharedGroup = new Group();
+    shared.add(sharedGroup);
+    sharedGroup.id = `level_${level}`;
+  }
+
+  const newSize = size / 3;
+
+  if (needsDraw) {
+    const newMiddleRect = new Rectangle(point.x, point.y, newSize, newSize);
+    newMiddleRect.fill = "#242424";
+    newMiddleRect.stroke = "#242424";
+    sharedGroup.add(newMiddleRect);
+  }
+
+  for(let x= -1; x<= 1; x++) {
+    for(let y= -1; y<= 1; y++) {
+      if (x !== 0 || y !== 0) {
+        const newPoint = new Vector(point.x + x * newSize, point.y + y * newSize);
+        drawSierpinskiCarpetLevel(main, shared, level + 1, maxLevel, newPoint, newSize);
+      }
+    }
+  }
+};
+
 window.onload = () => {
   const options = {
     fullscreen: false,
@@ -105,18 +218,39 @@ window.onload = () => {
   mainTriGroup.translation.set(triTwo.width / 2, triTwo.height / 2 + 60);
   drawSierpinskiTriangle(triTwo, triLevel);
 
+  // Create two canvas for carpet
+  const squareTwo = new Two(options).appendTo(squareArea);
+  const mainSquareGroup = squareTwo.makeGroup();
+  mainSquareGroup.id = "mainSquareGroup";
+  mainSquareGroup.translation.set(squareTwo.width / 2, squareTwo.height / 2);
+  drawSierpinskiCarpet(squareTwo, carpetLevel);
+
   triDecrease.onclick = () => {
     if (triLevel > 0) {
       triLevel--;
+      drawSierpinskiTriangle(triTwo, triLevel);
     }
-    drawSierpinskiTriangle(triTwo, triLevel);
   }
 
   triIncrease.onclick = () => {
     if (triLevel < 8) {
       triLevel++;
+      drawSierpinskiTriangle(triTwo, triLevel);
     }
-    drawSierpinskiTriangle(triTwo, triLevel);
+  }
+
+  squareDecrease.onclick = () => {
+    if (carpetLevel > 0) {
+      carpetLevel--;
+      drawSierpinskiCarpet(squareTwo, carpetLevel);
+    }
+  }
+
+  squareIncrease.onclick = () => {
+    if (carpetLevel < 5) {
+      carpetLevel++;
+      drawSierpinskiCarpet(squareTwo, carpetLevel);
+    }
   }
 
   window.onresize = () => {
@@ -126,5 +260,11 @@ window.onload = () => {
     (triTwo.scene as Group).getById("mainTriangleGroup")
       .translation.set(newWidth / 2, triTwo.height / 2 + 60);
     triTwo.update();
+
+    squareTwo.width = newWidth;
+    (squareTwo.renderer as Renderer).setSize(newWidth, squareTwo.height);
+    (squareTwo.scene as Group).getById("mainSquareGroup")
+      .translation.set(newWidth / 2, squareTwo.height / 2 + 60);
+    squareTwo.update();
   }
 };
