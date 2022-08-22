@@ -59,6 +59,11 @@ button:hover {
   margin-bottom: 1rem;
 }
 
+#polyButtons {
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

@@ -17,11 +17,32 @@ const squareArea = document.getElementById('squareArea') as HTMLDivElement;
 const squareDecrease = document.getElementById('squareDecrease') as HTMLButtonElement;
 const squareIncrease = document.getElementById('squareIncrease') as HTMLButtonElement;
 
+const polyArea = document.getElementById('polyArea') as HTMLDivElement;
+const polyDecrease = document.getElementById('polyDecrease') as HTMLButtonElement;
+const polyIncrease = document.getElementById('polyIncrease') as HTMLButtonElement;
+
+const sideSelect = document.getElementById('sideSelect') as HTMLSelectElement;
+
 let triLevel = 0;
 let carpetLevel = 0;
 
 let triLevelRendered = 0;
 let carpetLevelRendered = 0;
+
+let polyLevel = 0;
+let polySides = 5;
+
+const levelColors = [
+  "#F00",
+  "#0F0",
+  "#00F",
+  "#FF0",
+  "#F0F",
+  "#0FF",
+  "#53F",
+  "#F35",
+  "#5F3",
+]
 
 const drawSierpinskiTriangle = (two: Two, levels: number) => {
   const mainGroup = (two.scene as Group).getById("mainTriangleGroup") as Group;
@@ -203,6 +224,108 @@ const drawSierpinskiCarpetLevel = (main: Group, shared: Group, level: number, ma
   }
 };
 
+const drawSierpinskiPoly = (two: Two, levels: number, sides: number) => {
+  const mainGroup = (two.scene as Group).getById("mainPolyGroup") as Group;
+  const size = Math.min(two.height - 250, two.width / 3);
+  let base = mainGroup.getById("basePoly") as Polygon | null;
+  if (!base) {
+    const newPoly = new Polygon(0, 25, size, sides);
+    newPoly.fill = "#F00";
+    newPoly.stroke = "#F00";
+    newPoly.id = "basePoly";
+
+    mainGroup.add(newPoly);
+    base = newPoly;
+  }
+
+  const sharedGroup = new Group();
+
+  drawPolyLevel(mainGroup, sharedGroup, 1, levels, sides, new Vector(base.translation.x, base.translation.y), size, 0);
+
+  while(sharedGroup.children.length > 0) {
+    const child = (sharedGroup.children as Shape[]).pop();
+    child?.remove();
+    if (child) {
+      mainGroup.add(child);
+    }
+  }
+
+  two.update();
+}
+
+const drawPolyLevel = (main: Group, shared: Group, level: number, maxLevel: number, sides: number, point: Vector, size: number, angle: number) => {
+  if (maxLevel - level < 0) {
+    const thisLevel = main.getById(`level_${level}`) as Group | null;
+    if (thisLevel) {
+      thisLevel.visible = false;
+    }
+    return;
+  }
+
+  const levelGroup = main.getById(`level_${level}`);
+  let needsDraw = true;
+  if (levelGroup as Group) {
+    (levelGroup as Group).visible = true;
+    needsDraw = false;
+  }
+
+  let sharedGroup = shared.getById(`level_${level}`) as Group | null;
+  if (!sharedGroup) {
+    sharedGroup = new Group();
+    shared.add(sharedGroup);
+    sharedGroup.id = `level_${level}`;
+  }
+
+  const polyAngle = ((sides - 2) * 180) / sides;
+  const polySideSize = 4 * size * Math.cos(degToRad(polyAngle / 2));
+
+  const newSize = ( Math.cos(degToRad(90 - polyAngle / 2)) * polySideSize ) / (2 * (Math.cos(degToRad(180 - polyAngle)) + 1));
+  const newPolySize = (newSize / 2) / (2 * Math.cos(degToRad(polyAngle / 2)));
+
+  const distToSide = Math.sin(degToRad(polyAngle / 2)) * newPolySize;
+  const newAngle = degToRad(180 / sides) + angle + (Math.PI / 2);
+  const newRot = degToRad(180 / sides) * level;
+  const rotIncrement = degToRad(360 / sides);
+
+  if (needsDraw) {
+    const newPoly = new Polygon(point.x, point.y, newPolySize, sides);
+    newPoly.rotation = angle;
+    newPoly.fill = "#242424";
+    newPoly.stroke = "#242424";
+
+    for(let i=0; i<sides; i++) {
+      const newX = point.x + (Math.cos(newAngle + rotIncrement * i) * distToSide * 2);
+      const newY = point.y - (Math.sin(newAngle + rotIncrement * i) * distToSide * 2);
+      const subPoly = new Polygon(newX, newY, newPolySize, sides);
+      subPoly.rotation = -newRot;
+      subPoly.fill = levelColors[level];
+      subPoly.stroke = levelColors[level];
+      sharedGroup.add(subPoly);
+    }
+    sharedGroup.add(newPoly);
+  }
+
+  for(let i=0; i<sides; i++) {
+    const newX = point.x + (Math.cos(newAngle + rotIncrement * i) * distToSide * 2);
+    const newY = point.y - (Math.sin(newAngle + rotIncrement * i) * distToSide * 2);
+    drawPolyLevel(main, shared, level + 1, maxLevel, sides, new Vector(newX, newY), newPolySize, newRot);
+  }
+}
+
+const clearPoly = (two: Two) => {
+  const scene = two.scene as Group;
+  const mainGroup = scene.getById(`mainPolyGroup`) as Group;
+
+  while(mainGroup.children.length > 0) {
+    const child = mainGroup.children.pop();
+    child?.remove();
+  }
+}
+
+const degToRad = (deg: number) => {
+  return deg / 180 * Math.PI;
+}
+
 window.onload = () => {
   const options = {
     fullscreen: false,
@@ -224,6 +347,13 @@ window.onload = () => {
   mainSquareGroup.id = "mainSquareGroup";
   mainSquareGroup.translation.set(squareTwo.width / 2, squareTwo.height / 2);
   drawSierpinskiCarpet(squareTwo, carpetLevel);
+
+  // Create two canvas for other polygon
+  const polyTwo = new Two(options).appendTo(polyArea);
+  const mainPolyGroup = polyTwo.makeGroup();
+  mainPolyGroup.id = "mainPolyGroup";
+  mainPolyGroup.translation.set(polyTwo.width / 2, polyTwo.height / 2);
+  drawSierpinskiPoly(polyTwo, polyLevel, polySides);
 
   triDecrease.onclick = () => {
     if (triLevel > 0) {
@@ -253,6 +383,28 @@ window.onload = () => {
     }
   }
 
+  polyDecrease.onclick = () => {
+    if (polyLevel > 0) {
+      polyLevel--;
+      drawSierpinskiPoly(polyTwo, polyLevel, polySides);
+    }
+  }
+
+  polyIncrease.onclick = () => {
+    if (polyLevel < 5) {
+      polyLevel++;
+      drawSierpinskiPoly(polyTwo, polyLevel, polySides);
+    }
+  }
+
+  sideSelect.onchange = () => {
+    const selected = sideSelect.selectedOptions[0].value;
+    polySides = Number.parseInt(selected);
+    polyLevel = 0;
+    clearPoly(polyTwo);
+    drawSierpinskiPoly(polyTwo, polyLevel, polySides);
+  }
+
   window.onresize = () => {
     const newWidth = window.innerWidth - 40;
     triTwo.width = newWidth;
@@ -266,5 +418,11 @@ window.onload = () => {
     (squareTwo.scene as Group).getById("mainSquareGroup")
       .translation.set(newWidth / 2, squareTwo.height / 2 + 60);
     squareTwo.update();
+
+    polyTwo.width = newWidth;
+    (polyTwo.renderer as Renderer).setSize(newWidth, polyTwo.height);
+    (polyTwo.scene as Group).getById("mainPolyGroup")
+      .translation.set(newWidth / 2, polyTwo.height / 2 + 60);
+      polyTwo.update();
   }
 };
