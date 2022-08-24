@@ -31,22 +31,11 @@ let carpetLevelRendered = 0;
 
 let polyLevel = 0;
 let polySides = 5;
-
-const levelColors = [
-  "#F00",
-  "#0F0",
-  "#00F",
-  "#FF0",
-  "#F0F",
-  "#0FF",
-  "#53F",
-  "#F35",
-  "#5F3",
-]
+let polyLevelRendered = 0;
 
 const drawSierpinskiTriangle = (two: Two, levels: number) => {
   const mainGroup = (two.scene as Group).getById("mainTriangleGroup") as Group;
-  const size = Math.min(two.height - 200, two.width / 3);
+  const size = Math.min((two.height - 10) / 2, two.width / 3);
   let base = mainGroup.getById("baseTriangle") as Polygon | null;
   if (!base) {
     const newTriangle = new Polygon(0, 0, size, 3);
@@ -226,10 +215,10 @@ const drawSierpinskiCarpetLevel = (main: Group, shared: Group, level: number, ma
 
 const drawSierpinskiPoly = (two: Two, levels: number, sides: number) => {
   const mainGroup = (two.scene as Group).getById("mainPolyGroup") as Group;
-  const size = Math.min(two.height - 250, two.width / 3);
+  const size = Math.min((two.height - 10) / 2, two.width / 3);
   let base = mainGroup.getById("basePoly") as Polygon | null;
   if (!base) {
-    const newPoly = new Polygon(0, 25, size, sides);
+    const newPoly = new Polygon(0, 5, size, sides);
     newPoly.fill = "#F00";
     newPoly.stroke = "#F00";
     newPoly.id = "basePoly";
@@ -238,22 +227,37 @@ const drawSierpinskiPoly = (two: Two, levels: number, sides: number) => {
     base = newPoly;
   }
 
-  const sharedGroup = new Group();
+  if (levels > polyLevelRendered) {
+    const sharedGroup = new Group();
+    drawPolyLevel(mainGroup, sharedGroup, 1, levels, sides, new Vector(base.translation.x, base.translation.y), size);
+    polyLevelRendered = levels;
 
-  drawPolyLevel(mainGroup, sharedGroup, 1, levels, sides, new Vector(base.translation.x, base.translation.y), size, 0);
+    while(sharedGroup.children.length > 0) {
+      const child = (sharedGroup.children as Shape[]).pop();
+      child?.remove();
+      if (child) {
+        mainGroup.add(child);
+      }
+    }
+  }
 
-  while(sharedGroup.children.length > 0) {
-    const child = (sharedGroup.children as Shape[]).pop();
-    child?.remove();
-    if (child) {
-      mainGroup.add(child);
+  for(let child of mainGroup.children) {
+    child.visible = false;
+  }
+
+  base.visible = levels === 0;
+
+  for (let i=0; i<=levels; i++) {
+    const levelGroup = mainGroup.getById(`level_${i}`) as Group | null;
+    if (levelGroup && i === levels) {
+      levelGroup.visible = true;
     }
   }
 
   two.update();
 }
 
-const drawPolyLevel = (main: Group, shared: Group, level: number, maxLevel: number, sides: number, point: Vector, size: number, angle: number) => {
+const drawPolyLevel = (main: Group, shared: Group, level: number, maxLevel: number, sides: number, point: Vector, size: number) => {
   if (maxLevel - level < 0) {
     const thisLevel = main.getById(`level_${level}`) as Group | null;
     if (thisLevel) {
@@ -276,39 +280,36 @@ const drawPolyLevel = (main: Group, shared: Group, level: number, maxLevel: numb
     sharedGroup.id = `level_${level}`;
   }
 
-  const polyAngle = ((sides - 2) * 180) / sides;
-  const polySideSize = 4 * size * Math.cos(degToRad(polyAngle / 2));
+  const ratio = getNFlakeScale(sides);
+  const newSize = ratio * size;
 
-  const newSize = ( Math.cos(degToRad(90 - polyAngle / 2)) * polySideSize ) / (2 * (Math.cos(degToRad(180 - polyAngle)) + 1));
-  const newPolySize = (newSize / 2) / (2 * Math.cos(degToRad(polyAngle / 2)));
-
-  const distToSide = Math.sin(degToRad(polyAngle / 2)) * newPolySize;
-  const newAngle = degToRad(180 / sides) + angle + (Math.PI / 2);
-  const newRot = degToRad(180 / sides) * level;
+  const distToSide = (size - newSize) / 2;
   const rotIncrement = degToRad(360 / sides);
+  const startAngle = sides % 2 === 0 ? Math.PI / 2 + degToRad(180 / sides) : Math.PI / 2;
 
   if (needsDraw) {
-    const newPoly = new Polygon(point.x, point.y, newPolySize, sides);
-    newPoly.rotation = angle;
+    const newPoly = new Polygon(point.x, point.y, newSize, sides);
+    newPoly.rotation = Math.PI;
     newPoly.fill = "#242424";
     newPoly.stroke = "#242424";
 
     for(let i=0; i<sides; i++) {
-      const newX = point.x + (Math.cos(newAngle + rotIncrement * i) * distToSide * 2);
-      const newY = point.y - (Math.sin(newAngle + rotIncrement * i) * distToSide * 2);
-      const subPoly = new Polygon(newX, newY, newPolySize, sides);
-      subPoly.rotation = -newRot;
-      subPoly.fill = levelColors[level];
-      subPoly.stroke = levelColors[level];
+      const angle = startAngle + rotIncrement * i;
+      const newX = point.x + (Math.cos(angle) * distToSide * 2);
+      const newY = point.y - (Math.sin(angle) * distToSide * 2);
+      const subPoly = new Polygon(newX, newY, newSize, sides);
+      subPoly.fill = "#F00";
+      subPoly.stroke = "#F00";
       sharedGroup.add(subPoly);
     }
     sharedGroup.add(newPoly);
   }
 
   for(let i=0; i<sides; i++) {
-    const newX = point.x + (Math.cos(newAngle + rotIncrement * i) * distToSide * 2);
-    const newY = point.y - (Math.sin(newAngle + rotIncrement * i) * distToSide * 2);
-    drawPolyLevel(main, shared, level + 1, maxLevel, sides, new Vector(newX, newY), newPolySize, newRot);
+    const angle = startAngle + rotIncrement * i;
+    const newX = point.x + (Math.cos(angle) * distToSide * 2);
+    const newY = point.y - (Math.sin(angle) * distToSide * 2);
+    drawPolyLevel(main, shared, level + 1, maxLevel, sides, new Vector(newX, newY), newSize);
   }
 }
 
@@ -324,6 +325,15 @@ const clearPoly = (two: Two) => {
 
 const degToRad = (deg: number) => {
   return deg / 180 * Math.PI;
+}
+
+const getNFlakeScale = (n: number) => {
+  let sum = 0;
+  for (let k=1; k<n/4; k++) {
+    sum += Math.cos((2 * Math.PI * k) / n);
+  }
+
+  return 1 / (2 * (1 + sum));
 }
 
 window.onload = () => {
@@ -354,6 +364,9 @@ window.onload = () => {
   mainPolyGroup.id = "mainPolyGroup";
   mainPolyGroup.translation.set(polyTwo.width / 2, polyTwo.height / 2);
   drawSierpinskiPoly(polyTwo, polyLevel, polySides);
+
+  // Reset select
+  sideSelect.selectedIndex = 0;
 
   triDecrease.onclick = () => {
     if (triLevel > 0) {
@@ -401,6 +414,7 @@ window.onload = () => {
     const selected = sideSelect.selectedOptions[0].value;
     polySides = Number.parseInt(selected);
     polyLevel = 0;
+    polyLevelRendered = 0;
     clearPoly(polyTwo);
     drawSierpinskiPoly(polyTwo, polyLevel, polySides);
   }
